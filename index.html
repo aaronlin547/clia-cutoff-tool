@@ -4,11 +4,1285 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cutoff 建立工具（多批 × 多機 × 多次校正）</title>
-  <style>body{font-family:sans-serif;padding:2rem;background:#0c1017;color:#e8eef5}a{color:#3b82f6}</style>
+  <style>
+    :root {
+      --bg: #0c1017;
+      --card: #151c28;
+      --border: #2a3548;
+      --text: #e8eef5;
+      --muted: #8b9cb3;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --neg: #22c55e;
+      --pos: #ef4444;
+      --warn: #f59e0b;
+      --cutoff: #a78bfa;
+      --gray: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", "Noto Sans TC", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.35rem; font-weight: 650; margin-bottom: 4px; }
+    .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 18px; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .full { grid-column: 1 / -1; }
+    .card h2 {
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tag {
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+    input[type="number"], input[type="text"], select {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.88rem;
+      margin-bottom: 8px;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
+    .row-5 { display: grid; grid-template-columns: 1.2fr 1fr 1fr 0.9fr auto; gap: 8px; align-items: end; }
+    @media (max-width: 900px) {
+      .row-5 { grid-template-columns: 1fr 1fr; }
+      .row-4 { grid-template-columns: 1fr 1fr; }
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--border); color: var(--text); }
+    .btn-sm { padding: 5px 10px; font-size: 0.75rem; }
+    .btn-danger {
+      background: transparent;
+      color: var(--pos);
+      border: 1px solid rgba(239,68,68,0.4);
+      padding: 3px 8px;
+      font-size: 0.72rem;
+    }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .hint { font-size: 0.75rem; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th, td {
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      font-weight: 500;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--muted);
+    }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .badge-neg { background: rgba(34,197,94,0.15); color: var(--neg); }
+    .badge-pos { background: rgba(239,68,68,0.15); color: var(--pos); }
+    .badge-ok { background: rgba(34,197,94,0.18); color: var(--neg); }
+    .badge-fail { background: rgba(239,68,68,0.18); color: var(--pos); }
+    .badge-gray { background: rgba(148,163,184,0.18); color: var(--gray); }
+    .badge-sc { background: rgba(59,130,246,0.15); color: #93c5fd; }
+    .formula-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.82rem;
+      text-align: center;
+    }
+    .formula-box .result {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--cutoff);
+      margin-top: 4px;
+    }
+    .stats {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .stat {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 12px;
+      min-width: 90px;
+    }
+    .stat-label { font-size: 0.68rem; color: var(--muted); }
+    .stat-value { font-size: 1.05rem; font-weight: 700; }
+    .stat-value.good { color: var(--neg); }
+    .stat-value.bad { color: var(--pos); }
+    .perf-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+    }
+    @media (max-width: 700px) { .perf-grid { grid-template-columns: 1fr 1fr; } }
+    .perf-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 8px;
+      text-align: center;
+    }
+    .perf-item .n { font-size: 1rem; font-weight: 700; }
+    .perf-item .l { font-size: 0.68rem; color: var(--muted); }
+    .empty { text-align: center; padding: 16px; color: var(--muted); font-size: 0.85rem; }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 0.84rem;
+    }
+    .toggle-row input[type="checkbox"] {
+      width: 15px; height: 15px;
+      accent-color: var(--accent);
+    }
+    .scenario-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      margin: 0 6px 6px 0;
+      font-size: 0.78rem;
+    }
+    .scenario-chip strong { color: #93c5fd; }
+    .axis-wrap {
+      position: relative;
+      height: 150px;
+      margin: 10px 0 4px;
+      padding: 0 10px;
+      overflow: hidden;
+    }
+    .axis-line {
+      position: absolute;
+      left: 14px; right: 14px;
+      top: 72px;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+    }
+    .tick {
+      position: absolute;
+      top: 64px;
+      width: 2px; height: 14px;
+      background: var(--muted);
+      transform: translateX(-50%);
+    }
+    .tick-label {
+      position: absolute;
+      top: 84px;
+      transform: translateX(-50%);
+      font-size: 0.65rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .marker {
+      position: absolute;
+      top: 42px;
+      transform: translateX(-50%);
+      text-align: center;
+      z-index: 2;
+    }
+    .marker-dot {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      margin: 0 auto 2px;
+      border: 2px solid var(--bg);
+    }
+    .marker-label {
+      font-size: 0.62rem;
+      font-weight: 600;
+      max-width: 70px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .marker-value { font-size: 0.58rem; color: var(--muted); }
+    .marker.cutoff { top: 30px; z-index: 3; }
+    .marker.cutoff .marker-dot {
+      width: 3px; height: 36px;
+      border-radius: 2px;
+      background: var(--cutoff);
+      border: none;
+    }
+    .marker.cal .marker-dot { background: var(--accent); }
+    .marker.sample-neg .marker-dot { background: var(--neg); }
+    .marker.sample-pos .marker-dot { background: var(--pos); }
+    .marker.wrong .marker-dot { box-shadow: 0 0 0 3px var(--warn); }
+    .sc-table-wrap { max-height: 220px; overflow: auto; margin-top: 8px; }
+    .sample-table-wrap { max-height: 280px; overflow: auto; margin-top: 8px; }
+  </style>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-  <h1>CLIA Cutoff 建立工具</h1>
-  <p>完整版正在上傳。若你看到此頁，請重新整理或稍後再開。</p>
-  <p>Repo: <a href="https://github.com/aaronlin547/clia-cutoff-tool">aaronlin547/clia-cutoff-tool</a></p>
+  <h1>Cutoff 建立工具（多批 × 多機 × 多次校正）</h1>
+  <p class="subtitle">
+    建立多個「校正情境」（批次 / 儀器 / 校正次），各情境有自己的 Cal1、Cal2；檢體掛在對應情境下。
+    搜尋 α、β 時會跨所有情境評估，找出較穩健的係數。
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>① 係數與判讀規則 <span class="tag">α / β</span></h2>
+      <div class="row">
+        <div>
+          <label>α（陰性權重）</label>
+          <input type="number" id="alpha" step="0.001" value="0.175" />
+        </div>
+        <div>
+          <label>β（陽性權重）</label>
+          <input type="number" id="beta" step="0.001" value="0.0396" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>判陽門檻（S/CO ≥）</label>
+          <input type="number" id="threshold" step="0.01" value="1.0" />
+        </div>
+        <div>
+          <label>灰區下限（空白=無）</label>
+          <input type="number" id="grayLow" step="0.01" value="" placeholder="例如 0.90" />
+        </div>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" id="useBg" />
+        <label for="useBg" style="margin:0;color:var(--text)">背景校正（樣本 − k×Cal1）</label>
+      </div>
+      <div class="row" id="bgRow" style="display:none">
+        <div>
+          <label>k（羅氏 ≈ 0.796）</label>
+          <input type="number" id="bgK" step="0.001" value="0.796" />
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:10px 0;" />
+      <div style="font-size:0.84rem;font-weight:600;margin-bottom:6px;">跨情境自動搜尋 α / β</div>
+      <div class="row">
+        <div>
+          <label>優化目標</label>
+          <select id="optObjective">
+            <option value="robust">穩健：最差情境敏感度+特異度優先</option>
+            <option value="total">總正確數最多</option>
+            <option value="youden">平均 Youden 最大</option>
+          </select>
+        </div>
+        <div>
+          <label>精度</label>
+          <select id="optFine">
+            <option value="coarse">快速 0.02</option>
+            <option value="normal" selected>標準 0.01</option>
+            <option value="fine">精細 0.005</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary btn-sm" onclick="autoSearch()">開始跨情境搜尋</button>
+        <button class="btn btn-ghost btn-sm" id="btnApplyBest" style="display:none" onclick="applyBest()">套用最佳參數</button>
+      </div>
+      <div id="optResult" class="hint" style="min-height:1.2em;"></div>
+    </div>
+
+    <div class="card">
+      <h2>② 校正情境總覽 <span class="tag">Scenarios</span></h2>
+      <div id="scenarioChips" class="hint">尚未建立情境</div>
+      <div class="formula-box" style="margin-top:10px;">
+        目前係數下的「代表 Cutoff」<br />
+        <span class="hint">（各情境 Cutoff 不同，這裡顯示平均）</span>
+        <div class="result" id="cutoffDisplay">—</div>
+      </div>
+      <div class="stats" id="overallStats"></div>
+      <p class="hint">每個情境 = 一批試劑 × 一台儀器 × 一次校正（有自己的 Cal1 / Cal2）。</p>
+    </div>
+
+    <div class="card full">
+      <h2>③ 新增校正情境 <span class="tag">Lot / Instrument / Cal</span></h2>
+      <div class="row-4">
+        <div>
+          <label>試劑批次 Lot</label>
+          <input type="text" id="scLot" placeholder="LotA" />
+        </div>
+        <div>
+          <label>儀器</label>
+          <input type="text" id="scInst" placeholder="Inst1" />
+        </div>
+        <div>
+          <label>校正編號</label>
+          <input type="text" id="scCalId" placeholder="Run01" />
+        </div>
+        <div>
+          <label>備註（可空）</label>
+          <input type="text" id="scNote" placeholder="選填" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>陰性校正液 Cal1 RLU</label>
+          <input type="number" id="scCal1" step="1" placeholder="1200" />
+        </div>
+        <div>
+          <label>陽性校正液 Cal2 RLU</label>
+          <input type="number" id="scCal2" step="1" placeholder="7000" />
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary btn-sm" onclick="addScenario()">新增情境</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadDemo()">載入多情境示範資料</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">下載空白模板</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fileImport').click()">從 Excel / CSV 匯入</button>
+        <input type="file" id="fileImport" accept=".xlsx,.xls,.csv" style="display:none" onchange="importFile(event)" />
+        <button class="btn btn-ghost btn-sm" onclick="clearAll()">全部清除</button>
+        <button class="btn btn-ghost btn-sm" onclick="saveLocal()">儲存</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadLocal()">讀取</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportCsv()">匯出目前資料</button>
+      </div>
+      <div class="sc-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>情境 ID</th>
+              <th>Lot</th>
+              <th>儀器</th>
+              <th>校正</th>
+              <th>Cal1</th>
+              <th>Cal2</th>
+              <th>Cutoff</th>
+              <th>檢體數</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="scenarioTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>④ 新增檢體（指定所屬情境） <span class="tag">Samples</span></h2>
+      <div class="row-5">
+        <div>
+          <label>所屬情境</label>
+          <select id="sampleScenario"></select>
+        </div>
+        <div>
+          <label>檢體 ID</label>
+          <input type="text" id="sampleId" placeholder="N001" />
+        </div>
+        <div>
+          <label>訊號 RLU</label>
+          <input type="number" id="sampleRlu" step="1" placeholder="800" />
+        </div>
+        <div>
+          <label>真實狀態</label>
+          <select id="sampleTruth">
+            <option value="neg">陰性</option>
+            <option value="pos">陽性</option>
+          </select>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" style="width:100%" onclick="addSample()">新增</button>
+        </div>
+      </div>
+      <div class="sample-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>情境</th>
+              <th>檢體</th>
+              <th>RLU</th>
+              <th>真實</th>
+              <th>S/CO</th>
+              <th>判讀</th>
+              <th>結果</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="sampleTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>⑤ 可視化與分情境績效</h2>
+      <div>
+        <label>數線顯示情境</label>
+        <select id="vizScenario" onchange="renderAxis()"></select>
+      </div>
+      <div class="axis-wrap" id="axisContainer">
+        <div class="axis-line"></div>
+      </div>
+      <div class="perf-grid" id="perfGrid"></div>
+      <div class="sc-table-wrap" style="max-height:200px;">
+        <table>
+          <thead>
+            <tr>
+              <th>情境</th>
+              <th>Cutoff</th>
+              <th>N</th>
+              <th>正確</th>
+              <th>TP</th>
+              <th>TN</th>
+              <th>FP</th>
+              <th>FN</th>
+              <th>敏感度</th>
+              <th>特異度</th>
+              <th>Youden</th>
+            </tr>
+          </thead>
+          <tbody id="perScenarioPerf"></tbody>
+        </table>
+      </div>
+      <p class="hint">
+        綠=真陰　紅=真陽　紫線=該情境 Cutoff　黃框=判錯。
+        跨情境搜尋會同時看所有列的表現，避免係數只對單一校正有效。
+      </p>
+    </div>
+  </div>
+
+  <script>
+    let scenarios = [];
+    let samples = [];
+    let bestParams = null;
+    let scSeq = 1;
+    const $ = id => document.getElementById(id);
+
+    function getAlpha() { return parseFloat($("alpha").value) || 0; }
+    function getBeta() { return parseFloat($("beta").value) || 0; }
+    function getThreshold() { return parseFloat($("threshold").value) || 1; }
+    function getGrayLow() {
+      const v = parseFloat($("grayLow").value);
+      return isFinite(v) ? v : null;
+    }
+    function useBg() { return $("useBg").checked; }
+    function getBgK() { return parseFloat($("bgK").value) || 0; }
+
+    function cutoffOf(sc, alpha, beta) {
+      return alpha * sc.cal1 + beta * sc.cal2;
+    }
+
+    function indexOf(rlu, sc, alpha, beta) {
+      const co = cutoffOf(sc, alpha, beta);
+      if (!isFinite(co) || co <= 0) return null;
+      if (useBg()) return (rlu - getBgK() * sc.cal1) / co;
+      return rlu / co;
+    }
+
+    function classify(rlu, sc, alpha, beta) {
+      const sco = indexOf(rlu, sc, alpha, beta);
+      if (sco == null) return { sco: null, call: "na" };
+      const th = getThreshold();
+      const g = getGrayLow();
+      if (g != null && sco >= g && sco < th) return { sco, call: "gray" };
+      if (sco >= th) return { sco, call: "pos" };
+      return { sco, call: "neg" };
+    }
+
+    function scLabel(sc) {
+      return sc.lot + "/" + sc.inst + "/" + sc.calId;
+    }
+
+    function getSc(id) {
+      return scenarios.find(s => s.id === id);
+    }
+
+    function addScenario() {
+      const lot = $("scLot").value.trim() || ("Lot" + scSeq);
+      const inst = $("scInst").value.trim() || "Inst1";
+      const calId = $("scCalId").value.trim() || ("Run" + scSeq);
+      const note = $("scNote").value.trim();
+      const cal1 = parseFloat($("scCal1").value);
+      const cal2 = parseFloat($("scCal2").value);
+      if (!isFinite(cal1) || !isFinite(cal2)) {
+        alert("請填寫有效的 Cal1、Cal2 RLU");
+        return;
+      }
+      const id = "SC" + (scSeq++);
+      scenarios.push({ id: id, lot: lot, inst: inst, calId: calId, note: note, cal1: cal1, cal2: cal2 });
+      $("scLot").value = "";
+      $("scCalId").value = "";
+      $("scNote").value = "";
+      $("scCal1").value = "";
+      $("scCal2").value = "";
+      refreshScenarioSelects();
+      updateAll();
+    }
+
+    function removeScenario(id) {
+      if (!confirm("刪除此情境及其下所有檢體？")) return;
+      scenarios = scenarios.filter(s => s.id !== id);
+      samples = samples.filter(s => s.scenarioId !== id);
+      refreshScenarioSelects();
+      updateAll();
+    }
+
+    function addSample() {
+      const scenarioId = $("sampleScenario").value;
+      if (!scenarioId) {
+        alert("請先新增至少一個校正情境");
+        return;
+      }
+      const id = $("sampleId").value.trim() || ("S" + (samples.length + 1));
+      const rlu = parseFloat($("sampleRlu").value);
+      const truth = $("sampleTruth").value;
+      if (!isFinite(rlu)) {
+        alert("請輸入有效 RLU");
+        return;
+      }
+      samples.push({ id: id, scenarioId: scenarioId, rlu: rlu, truth: truth });
+      $("sampleId").value = "";
+      $("sampleRlu").value = "";
+      $("sampleRlu").focus();
+      updateAll();
+    }
+
+    function removeSample(idx) {
+      samples.splice(idx, 1);
+      updateAll();
+    }
+
+    function refreshScenarioSelects() {
+      const opts = scenarios.map(s =>
+        '<option value="' + s.id + '">' + scLabel(s) + " (Cal1=" + s.cal1 + ", Cal2=" + s.cal2 + ")</option>"
+      ).join("");
+      $("sampleScenario").innerHTML = opts || '<option value="">（無情境）</option>';
+      $("vizScenario").innerHTML = opts || '<option value="">（無情境）</option>';
+    }
+
+    function evalScenario(sc, alpha, beta) {
+      const list = samples.filter(s => s.scenarioId === sc.id);
+      let tp = 0, tn = 0, fp = 0, fn = 0, gray = 0;
+      for (let i = 0; i < list.length; i++) {
+        const s = list[i];
+        const call = classify(s.rlu, sc, alpha, beta).call;
+        if (call === "gray") gray++;
+        else if (s.truth === "pos" && call === "pos") tp++;
+        else if (s.truth === "neg" && call === "neg") tn++;
+        else if (s.truth === "neg" && call === "pos") fp++;
+        else if (s.truth === "pos" && call === "neg") fn++;
+      }
+      const n = list.length;
+      const correct = tp + tn;
+      const sens = (tp + fn) > 0 ? tp / (tp + fn) : 1;
+      const spec = (tn + fp) > 0 ? tn / (tn + fp) : 1;
+      const youden = sens + spec - 1;
+      return { n: n, tp: tp, tn: tn, fp: fp, fn: fn, gray: gray, correct: correct, sens: sens, spec: spec, youden: youden, cutoff: cutoffOf(sc, alpha, beta) };
+    }
+
+    function evalAll(alpha, beta) {
+      const per = scenarios.map(function(sc) {
+        const e = evalScenario(sc, alpha, beta);
+        e.sc = sc;
+        return e;
+      });
+      let tp = 0, tn = 0, fp = 0, fn = 0, gray = 0, correct = 0, n = 0;
+      let minSens = 1, minSpec = 1, sumYouden = 0, scWithData = 0;
+      for (let i = 0; i < per.length; i++) {
+        const p = per[i];
+        tp += p.tp; tn += p.tn; fp += p.fp; fn += p.fn;
+        gray += p.gray; correct += p.correct; n += p.n;
+        if (p.n > 0) {
+          minSens = Math.min(minSens, p.sens);
+          minSpec = Math.min(minSpec, p.spec);
+          sumYouden += p.youden;
+          scWithData++;
+        }
+      }
+      const avgYouden = scWithData ? sumYouden / scWithData : 0;
+      const sens = (tp + fn) > 0 ? tp / (tp + fn) : 0;
+      const spec = (tn + fp) > 0 ? tn / (tn + fp) : 0;
+      return {
+        per: per, tp: tp, tn: tn, fp: fp, fn: fn, gray: gray, correct: correct, n: n,
+        sens: sens, spec: spec, minSens: minSens, minSpec: minSpec, avgYouden: avgYouden,
+        youden: sens + spec - 1
+      };
+    }
+
+    function updateAll() {
+      $("bgRow").style.display = useBg() ? "grid" : "none";
+      renderScenarioTable();
+      renderSampleTable();
+      renderChipsAndOverall();
+      renderPerScenarioPerf();
+      renderAxis();
+    }
+
+    function renderChipsAndOverall() {
+      const a = getAlpha(), b = getBeta();
+      if (scenarios.length === 0) {
+        $("scenarioChips").textContent = "尚未建立情境";
+        $("cutoffDisplay").textContent = "—";
+        $("overallStats").innerHTML = "";
+        return;
+      }
+      $("scenarioChips").innerHTML = scenarios.map(function(sc) {
+        const co = cutoffOf(sc, a, b);
+        const n = samples.filter(function(s) { return s.scenarioId === sc.id; }).length;
+        return '<span class="scenario-chip"><strong>' + scLabel(sc) + "</strong> Cal1=" + sc.cal1 + " Cal2=" + sc.cal2 + " → CO=" + co.toFixed(1) + " · n=" + n + "</span>";
+      }).join("");
+
+      const all = evalAll(a, b);
+      const avgCo = scenarios.reduce(function(s, sc) { return s + cutoffOf(sc, a, b); }, 0) / scenarios.length;
+      $("cutoffDisplay").textContent = avgCo.toFixed(2);
+      $("overallStats").innerHTML =
+        '<div class="stat"><div class="stat-label">總檢體</div><div class="stat-value">' + all.n + "</div></div>" +
+        '<div class="stat"><div class="stat-label">總正確</div><div class="stat-value good">' + all.correct + "</div></div>" +
+        '<div class="stat"><div class="stat-label">總錯誤</div><div class="stat-value bad">' + (all.fp + all.fn) + "</div></div>" +
+        '<div class="stat"><div class="stat-label">整體敏感度</div><div class="stat-value">' + (all.sens * 100).toFixed(1) + "%</div></div>" +
+        '<div class="stat"><div class="stat-label">整體特異度</div><div class="stat-value">' + (all.spec * 100).toFixed(1) + "%</div></div>" +
+        '<div class="stat"><div class="stat-label">最差情境敏感度</div><div class="stat-value">' + (all.minSens * 100).toFixed(1) + "%</div></div>" +
+        '<div class="stat"><div class="stat-label">最差情境特異度</div><div class="stat-value">' + (all.minSpec * 100).toFixed(1) + "%</div></div>";
+    }
+
+    function renderScenarioTable() {
+      const a = getAlpha(), b = getBeta();
+      const tb = $("scenarioTable");
+      if (!scenarios.length) {
+        tb.innerHTML = '<tr><td colspan="9" class="empty">尚未新增校正情境</td></tr>';
+        return;
+      }
+      tb.innerHTML = scenarios.map(function(sc) {
+        const n = samples.filter(function(s) { return s.scenarioId === sc.id; }).length;
+        const co = cutoffOf(sc, a, b);
+        return "<tr>" +
+          '<td><span class="badge badge-sc">' + sc.id + "</span></td>" +
+          "<td>" + esc(sc.lot) + "</td>" +
+          "<td>" + esc(sc.inst) + "</td>" +
+          "<td>" + esc(sc.calId) + "</td>" +
+          "<td>" + sc.cal1 + "</td>" +
+          "<td>" + sc.cal2 + "</td>" +
+          "<td>" + co.toFixed(2) + "</td>" +
+          "<td>" + n + "</td>" +
+          '<td><button class="btn btn-danger" onclick="removeScenario(\'' + sc.id + '\')">刪</button></td>' +
+          "</tr>";
+      }).join("");
+    }
+
+    function renderSampleTable() {
+      const a = getAlpha(), b = getBeta();
+      const tb = $("sampleTable");
+      if (!samples.length) {
+        tb.innerHTML = '<tr><td colspan="8" class="empty">尚未新增檢體</td></tr>';
+        return;
+      }
+      tb.innerHTML = samples.map(function(s, i) {
+        const sc = getSc(s.scenarioId);
+        if (!sc) return "";
+        const r = classify(s.rlu, sc, a, b);
+        const sco = r.sco, call = r.call;
+        const ok = call !== "gray" && call === s.truth;
+        const truthB = s.truth === "neg" ? '<span class="badge badge-neg">陰</span>' : '<span class="badge badge-pos">陽</span>';
+        let callB;
+        if (call === "pos") callB = '<span class="badge badge-pos">R</span>';
+        else if (call === "neg") callB = '<span class="badge badge-neg">NR</span>';
+        else if (call === "gray") callB = '<span class="badge badge-gray">灰</span>';
+        else callB = "—";
+        const resB = call === "gray"
+          ? '<span class="badge badge-gray">灰區</span>'
+          : ok ? '<span class="badge badge-ok">✓</span>' : '<span class="badge badge-fail">✗</span>';
+        return "<tr>" +
+          "<td>" + esc(scLabel(sc)) + "</td>" +
+          "<td>" + esc(s.id) + "</td>" +
+          "<td>" + s.rlu + "</td>" +
+          "<td>" + truthB + "</td>" +
+          "<td>" + (sco != null ? sco.toFixed(3) : "—") + "</td>" +
+          "<td>" + callB + "</td>" +
+          "<td>" + resB + "</td>" +
+          '<td><button class="btn btn-danger" onclick="removeSample(' + i + ')">刪</button></td>' +
+          "</tr>";
+      }).join("");
+    }
+
+    function renderPerScenarioPerf() {
+      const a = getAlpha(), b = getBeta();
+      const all = evalAll(a, b);
+      const tb = $("perScenarioPerf");
+      if (!scenarios.length) {
+        tb.innerHTML = '<tr><td colspan="11" class="empty">無情境</td></tr>';
+        $("perfGrid").innerHTML = "";
+        return;
+      }
+      tb.innerHTML = all.per.map(function(p) {
+        return "<tr>" +
+          "<td>" + esc(scLabel(p.sc)) + "</td>" +
+          "<td>" + p.cutoff.toFixed(1) + "</td>" +
+          "<td>" + p.n + "</td>" +
+          "<td>" + p.correct + "</td>" +
+          "<td>" + p.tp + "</td>" +
+          "<td>" + p.tn + "</td>" +
+          "<td>" + p.fp + "</td>" +
+          "<td>" + p.fn + "</td>" +
+          "<td>" + (p.sens * 100).toFixed(1) + "%</td>" +
+          "<td>" + (p.spec * 100).toFixed(1) + "%</td>" +
+          "<td>" + p.youden.toFixed(3) + "</td>" +
+          "</tr>";
+      }).join("");
+
+      $("perfGrid").innerHTML =
+        '<div class="perf-item"><div class="n">' + all.tp + '</div><div class="l">TP</div></div>' +
+        '<div class="perf-item"><div class="n">' + all.tn + '</div><div class="l">TN</div></div>' +
+        '<div class="perf-item"><div class="n">' + all.fp + '</div><div class="l">FP</div></div>' +
+        '<div class="perf-item"><div class="n">' + all.fn + '</div><div class="l">FN</div></div>' +
+        '<div class="perf-item"><div class="n">' + (all.sens * 100).toFixed(1) + '%</div><div class="l">整體敏感度</div></div>' +
+        '<div class="perf-item"><div class="n">' + (all.spec * 100).toFixed(1) + '%</div><div class="l">整體特異度</div></div>' +
+        '<div class="perf-item"><div class="n">' + (all.minSens * 100).toFixed(1) + '%</div><div class="l">最差情境敏感度</div></div>' +
+        '<div class="perf-item"><div class="n">' + (all.minSpec * 100).toFixed(1) + '%</div><div class="l">最差情境特異度</div></div>';
+    }
+
+    function renderAxis() {
+      const container = $("axisContainer");
+      container.innerHTML = '<div class="axis-line"></div>';
+      const sid = $("vizScenario").value;
+      const sc = getSc(sid);
+      if (!sc) return;
+      const a = getAlpha(), b = getBeta();
+      const co = cutoffOf(sc, a, b);
+      const list = samples.filter(function(s) { return s.scenarioId === sc.id; });
+      let values = [sc.cal1, sc.cal2, co].filter(function(v) { return isFinite(v); });
+      list.forEach(function(s) { values.push(s.rlu); });
+      if (!values.length) return;
+      let minV = Math.min.apply(null, values), maxV = Math.max.apply(null, values);
+      const pad = (maxV - minV) * 0.1 || 200;
+      minV = Math.max(0, minV - pad);
+      maxV = maxV + pad;
+      if (maxV <= minV) maxV = minV + 1;
+      const toPct = function(v) { return ((v - minV) / (maxV - minV)) * 100; };
+
+      for (let i = 0; i <= 5; i++) {
+        const v = minV + (maxV - minV) * (i / 5);
+        const pct = (i / 5) * 100;
+        const tick = document.createElement("div");
+        tick.className = "tick";
+        tick.style.left = "calc(14px + (100% - 28px) * " + (pct / 100) + ")";
+        container.appendChild(tick);
+        const lab = document.createElement("div");
+        lab.className = "tick-label";
+        lab.style.left = "calc(14px + (100% - 28px) * " + (pct / 100) + ")";
+        lab.textContent = Math.round(v);
+        container.appendChild(lab);
+      }
+      addMarker(container, toPct(co), "cutoff", "Cutoff", co.toFixed(1));
+      addMarker(container, toPct(sc.cal1), "cal", "Cal1", sc.cal1);
+      addMarker(container, toPct(sc.cal2), "cal", "Cal2", sc.cal2);
+      const sorted = list.slice().sort(function(x, y) { return x.rlu - y.rlu; });
+      sorted.forEach(function(s, idx) {
+        const call = classify(s.rlu, sc, a, b).call;
+        const wrong = call !== "gray" && call !== s.truth;
+        let cls = s.truth === "neg" ? "sample-neg" : "sample-pos";
+        if (wrong) cls += " wrong";
+        const el = addMarker(container, toPct(s.rlu), cls, s.id, s.rlu);
+        if (idx % 2 === 1) el.style.top = "16px";
+      });
+    }
+
+    function addMarker(container, pct, cls, label, value) {
+      const el = document.createElement("div");
+      el.className = "marker " + cls;
+      el.style.left = "calc(14px + (100% - 28px) * " + (pct / 100) + ")";
+      el.title = label + ": " + value;
+      el.innerHTML = '<div class="marker-dot"></div><div class="marker-label">' + esc(String(label)) + '</div><div class="marker-value">' + value + "</div>";
+      container.appendChild(el);
+      return el;
+    }
+
+    function autoSearch() {
+      if (!scenarios.length || !samples.length) {
+        $("optResult").textContent = "請先建立情境並新增有真值的檢體。";
+        $("btnApplyBest").style.display = "none";
+        return;
+      }
+      const step = $("optFine").value === "fine" ? 0.005
+        : $("optFine").value === "coarse" ? 0.02 : 0.01;
+      const objective = $("optObjective").value;
+      const aMin = 0.01, aMax = 0.5, bMin = 0.005, bMax = 1.0;
+      let best = null, bestScore = -1e18, tested = 0;
+
+      $("optResult").textContent = "跨情境搜尋中…";
+
+      for (let a = aMin; a <= aMax + 1e-9; a += step) {
+        for (let bb = bMin; bb <= bMax + 1e-9; bb += step) {
+          tested++;
+          const ev = evalAll(a, bb);
+          let score;
+          if (objective === "total") {
+            score = ev.correct * 1000 - (ev.fp + ev.fn) * 10 - ev.gray * 30;
+          } else if (objective === "youden") {
+            score = ev.avgYouden * 10000 + ev.correct;
+          } else {
+            score = (ev.minSens + ev.minSpec) * 50000 + ev.correct * 10 + ev.avgYouden * 100;
+          }
+          if (score > bestScore) {
+            bestScore = score;
+            best = {
+              alpha: a, beta: bb, score: score,
+              correct: ev.correct, n: ev.n,
+              minSens: ev.minSens, minSpec: ev.minSpec,
+              sens: ev.sens, spec: ev.spec, avgYouden: ev.avgYouden
+            };
+          }
+        }
+      }
+
+      if (best) {
+        const ls = step / 5;
+        for (let a = Math.max(aMin, best.alpha - step); a <= Math.min(aMax, best.alpha + step) + 1e-12; a += ls) {
+          for (let bb = Math.max(bMin, best.beta - step); bb <= Math.min(bMax, best.beta + step) + 1e-12; bb += ls) {
+            tested++;
+            const ev = evalAll(a, bb);
+            let score;
+            if (objective === "total") {
+              score = ev.correct * 1000 - (ev.fp + ev.fn) * 10 - ev.gray * 30;
+            } else if (objective === "youden") {
+              score = ev.avgYouden * 10000 + ev.correct;
+            } else {
+              score = (ev.minSens + ev.minSpec) * 50000 + ev.correct * 10 + ev.avgYouden * 100;
+            }
+            if (score > bestScore) {
+              bestScore = score;
+              best = {
+                alpha: a, beta: bb, score: score,
+                correct: ev.correct, n: ev.n,
+                minSens: ev.minSens, minSpec: ev.minSpec,
+                sens: ev.sens, spec: ev.spec, avgYouden: ev.avgYouden
+              };
+            }
+          }
+        }
+      }
+
+      bestParams = best;
+      $("optResult").innerHTML =
+        "最佳 α=<b>" + best.alpha.toFixed(4) + "</b>，β=<b>" + best.beta.toFixed(4) + "</b><br>" +
+        "總正確 " + best.correct + "/" + best.n +
+        "　最差情境敏感度 " + (best.minSens * 100).toFixed(1) + "%" +
+        "　最差情境特異度 " + (best.minSpec * 100).toFixed(1) + "%<br>" +
+        "整體敏感度 " + (best.sens * 100).toFixed(1) + "%" +
+        "　整體特異度 " + (best.spec * 100).toFixed(1) + "%" +
+        "　平均 Youden " + best.avgYouden.toFixed(3) + "<br>" +
+        '<span style="opacity:0.75">評估 ' + tested.toLocaleString() + " 組 · 情境數 " + scenarios.length + "</span>";
+      $("btnApplyBest").style.display = "inline-flex";
+    }
+
+    function applyBest() {
+      if (!bestParams) return;
+      $("alpha").value = bestParams.alpha.toFixed(4);
+      $("beta").value = bestParams.beta.toFixed(4);
+      updateAll();
+      $("optResult").innerHTML += '<br><span style="color:var(--neg)">已套用。</span>';
+    }
+
+    function loadDemo() {
+      scenarios = [];
+      samples = [];
+      scSeq = 1;
+      const demoSc = [
+        { lot: "LotA", inst: "Inst1", calId: "Run01", cal1: 1100, cal2: 6500 },
+        { lot: "LotA", inst: "Inst2", calId: "Run02", cal1: 1350, cal2: 7800 },
+        { lot: "LotB", inst: "Inst1", calId: "Run01", cal1: 950, cal2: 5200 }
+      ];
+      demoSc.forEach(function(d) {
+        scenarios.push({
+          id: "SC" + (scSeq++),
+          lot: d.lot, inst: d.inst, calId: d.calId, note: "",
+          cal1: d.cal1, cal2: d.cal2
+        });
+      });
+      const base = [
+        { id: "N1", rlu: 700, truth: "neg" },
+        { id: "N2", rlu: 980, truth: "neg" },
+        { id: "N3", rlu: 1250, truth: "neg" },
+        { id: "N4", rlu: 1600, truth: "neg" },
+        { id: "P1", rlu: 2300, truth: "pos" },
+        { id: "P2", rlu: 3100, truth: "pos" },
+        { id: "P3", rlu: 5000, truth: "pos" }
+      ];
+      scenarios.forEach(function(sc, i) {
+        const scale = 0.9 + i * 0.08;
+        base.forEach(function(b) {
+          samples.push({
+            id: b.id + "-" + sc.lot + "-" + sc.inst,
+            scenarioId: sc.id,
+            rlu: Math.round(b.rlu * scale),
+            truth: b.truth
+          });
+        });
+      });
+      $("alpha").value = 0.175;
+      $("beta").value = 0.0396;
+      $("threshold").value = 1.0;
+      $("grayLow").value = "";
+      $("useBg").checked = false;
+      refreshScenarioSelects();
+      updateAll();
+    }
+
+    function clearAll() {
+      if (!confirm("清除所有情境與檢體？")) return;
+      scenarios = [];
+      samples = [];
+      scSeq = 1;
+      bestParams = null;
+      $("btnApplyBest").style.display = "none";
+      $("optResult").textContent = "";
+      refreshScenarioSelects();
+      updateAll();
+    }
+
+
+    function downloadTemplate() {
+      // 空白模板：表頭 + 兩列範例（可刪）+ 說明列
+      const headers = ["Lot", "Instrument", "CalId", "Cal1", "Cal2", "SampleId", "RLU", "Truth"];
+      const example1 = ["LotA", "Inst1", "Run01", "1100", "6500", "N001", "800", "neg"];
+      const example2 = ["LotA", "Inst1", "Run01", "1100", "6500", "P001", "3200", "pos"];
+      const example3 = ["LotB", "Inst2", "Run01", "1300", "7200", "N002", "900", "neg"];
+      const note = ["# 說明：Truth 請填 neg 或 pos；同一組 Lot+Instrument+CalId+Cal1+Cal2 會合併為同一校正情境；範例列可刪除後填入真實資料", "", "", "", "", "", "", ""];
+      const rows = [headers, example1, example2, example3];
+      // 用 SheetJS 產出真正的 xlsx
+      if (typeof XLSX !== "undefined") {
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        // 欄寬
+        ws["!cols"] = headers.map(function() { return { wch: 14 }; });
+        // 第二個工作表放說明
+        const help = XLSX.utils.aoa_to_sheet([
+          ["欄位", "必填", "說明"],
+          ["Lot", "是", "試劑批次，例如 LotA"],
+          ["Instrument", "是", "儀器代號，例如 Inst1"],
+          ["CalId", "是", "校正編號，例如 Run01"],
+          ["Cal1", "是", "該次校正陰性校正液 RLU / counts"],
+          ["Cal2", "是", "該次校正陽性校正液 RLU / counts"],
+          ["SampleId", "是", "檢體編號"],
+          ["RLU", "是", "檢體訊號值"],
+          ["Truth", "是", "真實狀態：neg=陰性，pos=陽性（也可寫 陰/陽/negative/positive）"],
+          [],
+          ["匯入規則", "", ""],
+          ["1", "", "相同 Lot + Instrument + CalId + Cal1 + Cal2 會視為同一校正情境"],
+          ["2", "", "每個情境下可有多筆檢體（多列）"],
+          ["3", "", "以 # 開頭的列會被忽略"],
+          ["4", "", "建議先下載本模板，刪除範例列後填入資料再匯入"]
+        ]);
+        help["!cols"] = [{ wch: 12 }, { wch: 8 }, { wch: 50 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "資料");
+        XLSX.utils.book_append_sheet(wb, help, "填寫說明");
+        XLSX.writeFile(wb, "cutoff_import_template.xlsx");
+      } else {
+        // fallback CSV
+        const csv = rows.map(function(r) { return r.join(","); }).join("\n");
+        const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "cutoff_import_template.csv";
+        link.click();
+      }
+    }
+
+    function normalizeTruth(v) {
+      const s = String(v == null ? "" : v).trim().toLowerCase();
+      if (s === "neg" || s === "negative" || s === "n" || s === "陰" || s === "陰性" || s === "0") return "neg";
+      if (s === "pos" || s === "positive" || s === "p" || s === "陽" || s === "陽性" || s === "1") return "pos";
+      return null;
+    }
+
+    function importFile(ev) {
+      const file = ev.target.files && ev.target.files[0];
+      ev.target.value = "";
+      if (!file) return;
+      const name = file.name.toLowerCase();
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          let rows = [];
+          if (name.endsWith(".csv")) {
+            const text = e.target.result;
+            rows = parseCsv(text);
+          } else if (typeof XLSX !== "undefined") {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, { type: "array" });
+            const sheetName = wb.SheetNames.indexOf("資料") >= 0 ? "資料" : wb.SheetNames[0];
+            const ws = wb.Sheets[sheetName];
+            rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+          } else {
+            alert("無法讀取 Excel，請改用 CSV 或確認網路可載入 SheetJS");
+            return;
+          }
+          const result = rowsToData(rows);
+          if (result.error) {
+            alert(result.error);
+            return;
+          }
+          if (!confirm("將匯入 " + result.scenarios.length + " 個情境、" + result.samples.length + " 筆檢體（會取代目前資料）。確定？")) return;
+          scenarios = result.scenarios;
+          samples = result.samples;
+          scSeq = scenarios.length + 1;
+          refreshScenarioSelects();
+          updateAll();
+          alert("匯入完成：情境 " + scenarios.length + "、檢體 " + samples.length);
+        } catch (err) {
+          console.error(err);
+          alert("匯入失敗：" + (err.message || err));
+        }
+      };
+      if (name.endsWith(".csv")) reader.readAsText(file, "utf-8");
+      else reader.readAsArrayBuffer(file);
+    }
+
+    function parseCsv(text) {
+      // 簡單 CSV（支援引號）
+      const lines = String(text).replace(/^\ufeff/, "").split(/\r\n|\n|\r/);
+      const rows = [];
+      for (let li = 0; li < lines.length; li++) {
+        const line = lines[li];
+        if (!line.trim()) continue;
+        const row = [];
+        let cur = "";
+        let q = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (q && line[i + 1] === '"') { cur += '"'; i++; }
+            else q = !q;
+          } else if (ch === "," && !q) {
+            row.push(cur);
+            cur = "";
+          } else cur += ch;
+        }
+        row.push(cur);
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    function rowsToData(rows) {
+      if (!rows || !rows.length) return { error: "檔案是空的" };
+      // 找表頭列
+      let headerIdx = -1;
+      let headers = [];
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const r = rows[i].map(function(c) { return String(c).trim(); });
+        if (String(r[0]).indexOf("#") === 0) continue;
+        const lower = r.map(function(c) { return c.toLowerCase(); });
+        if (lower.indexOf("lot") >= 0 && lower.indexOf("cal1") >= 0 && lower.indexOf("rlu") >= 0) {
+          headerIdx = i;
+          headers = lower;
+          break;
+        }
+      }
+      if (headerIdx < 0) {
+        return { error: "找不到表頭。請使用模板欄位：Lot, Instrument, CalId, Cal1, Cal2, SampleId, RLU, Truth" };
+      }
+      const col = function(name) {
+        const alts = Array.prototype.slice.call(arguments);
+        for (let a = 0; a < alts.length; a++) {
+          const idx = headers.indexOf(String(alts[a]).toLowerCase());
+          if (idx >= 0) return idx;
+        }
+        return -1;
+      };
+      const iLot = col("lot", "批次");
+      const iInst = col("instrument", "inst", "儀器");
+      const iCalId = col("calid", "cal_id", "校正", "校正編號");
+      const iCal1 = col("cal1", "陰性校正", "negcal");
+      const iCal2 = col("cal2", "陽性校正", "poscal");
+      const iSid = col("sampleid", "sample_id", "檢體", "id");
+      const iRlu = col("rlu", "signal", "訊號");
+      const iTruth = col("truth", "真實", "label", "status");
+      if (iLot < 0 || iCal1 < 0 || iCal2 < 0 || iRlu < 0 || iTruth < 0) {
+        return { error: "表頭缺少必要欄位（Lot, Cal1, Cal2, RLU, Truth）" };
+      }
+
+      const scMap = {};
+      const newScenarios = [];
+      const newSamples = [];
+      let seq = 1;
+      for (let r = headerIdx + 1; r < rows.length; r++) {
+        const row = rows[r];
+        if (!row || !row.length) continue;
+        const c0 = String(row[0] == null ? "" : row[0]).trim();
+        if (!c0 || c0.indexOf("#") === 0) continue;
+        const lot = String(row[iLot] == null ? "" : row[iLot]).trim();
+        const inst = iInst >= 0 ? String(row[iInst] == null ? "" : row[iInst]).trim() : "Inst1";
+        const calId = iCalId >= 0 ? String(row[iCalId] == null ? "" : row[iCalId]).trim() : "Run1";
+        const cal1 = parseFloat(row[iCal1]);
+        const cal2 = parseFloat(row[iCal2]);
+        const sampleId = iSid >= 0 ? String(row[iSid] == null ? "" : row[iSid]).trim() : ("S" + r);
+        const rlu = parseFloat(row[iRlu]);
+        const truth = normalizeTruth(row[iTruth]);
+        if (!lot || !isFinite(cal1) || !isFinite(cal2) || !isFinite(rlu) || !truth) continue;
+        const key = [lot, inst || "Inst1", calId || "Run1", cal1, cal2].join("||");
+        if (!scMap[key]) {
+          const id = "SC" + (seq++);
+          scMap[key] = id;
+          newScenarios.push({
+            id: id,
+            lot: lot,
+            inst: inst || "Inst1",
+            calId: calId || "Run1",
+            note: "",
+            cal1: cal1,
+            cal2: cal2
+          });
+        }
+        newSamples.push({
+          id: sampleId || ("S" + newSamples.length + 1),
+          scenarioId: scMap[key],
+          rlu: rlu,
+          truth: truth
+        });
+      }
+      if (!newScenarios.length || !newSamples.length) {
+        return { error: "沒有讀到有效資料列，請確認 Truth 為 neg/pos，且數值欄為數字" };
+      }
+      return { scenarios: newScenarios, samples: newSamples };
+    }
+
+
+    function exportCsv() {
+      const a = getAlpha(), b = getBeta();
+      const rows = [["ScenarioId", "Lot", "Instrument", "CalId", "Cal1", "Cal2", "Cutoff", "SampleId", "RLU", "Truth", "Index", "Call", "Correct"]];
+      samples.forEach(function(s) {
+        const sc = getSc(s.scenarioId);
+        if (!sc) return;
+        const r = classify(s.rlu, sc, a, b);
+        const ok = r.call !== "gray" && r.call === s.truth;
+        rows.push([
+          sc.id, sc.lot, sc.inst, sc.calId, sc.cal1, sc.cal2,
+          cutoffOf(sc, a, b).toFixed(4),
+          s.id, s.rlu, s.truth,
+          r.sco != null ? r.sco.toFixed(4) : "",
+          r.call, ok ? "Y" : "N"
+        ]);
+      });
+      const csv = rows.map(function(r) { return r.join(","); }).join("\n");
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "cutoff_multi_scenario.csv";
+      link.click();
+    }
+
+    function saveLocal() {
+      localStorage.setItem("cutoff_multi_v1", JSON.stringify({
+        alpha: $("alpha").value,
+        beta: $("beta").value,
+        threshold: $("threshold").value,
+        grayLow: $("grayLow").value,
+        useBg: $("useBg").checked,
+        bgK: $("bgK").value,
+        scenarios: scenarios,
+        samples: samples,
+        scSeq: scSeq
+      }));
+      alert("已儲存");
+    }
+
+    function loadLocal() {
+      const raw = localStorage.getItem("cutoff_multi_v1");
+      if (!raw) { alert("無儲存資料"); return; }
+      try {
+        const d = JSON.parse(raw);
+        $("alpha").value = d.alpha != null ? d.alpha : 0.175;
+        $("beta").value = d.beta != null ? d.beta : 0.0396;
+        $("threshold").value = d.threshold != null ? d.threshold : 1;
+        $("grayLow").value = d.grayLow != null ? d.grayLow : "";
+        $("useBg").checked = !!d.useBg;
+        $("bgK").value = d.bgK != null ? d.bgK : 0.796;
+        scenarios = d.scenarios || [];
+        samples = d.samples || [];
+        scSeq = d.scSeq || (scenarios.length + 1);
+        refreshScenarioSelects();
+        updateAll();
+      } catch (e) {
+        alert("讀取失敗");
+      }
+    }
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    ["alpha", "beta", "threshold", "grayLow", "bgK"].forEach(function(id) {
+      $(id).addEventListener("input", updateAll);
+    });
+    $("useBg").addEventListener("change", updateAll);
+    $("sampleRlu").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") addSample();
+    });
+
+    refreshScenarioSelects();
+    updateAll();
+  </script>
 </body>
 </html>
